@@ -1,0 +1,6 @@
+{
+  "name": "FeePilot - Coaching Institute Fee Management & Parent Portal",
+  "description": "Fee ledger, instalment management, bilingual parent portal, GST receipting, and refund engine for coaching institutes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
