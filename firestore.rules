@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Health probe for connection validation
+    match /_health/{docId} {
+      allow read: if true;
+      allow write: if isAccountsExecutive();
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Role 1: ACCOUNTS_EXECUTIVE (Strict RBAC from trusted user profile; no email exception)
+    function isAccountsExecutive() {
+      return isSignedIn() && hasUserDoc() && getUserData().role == 'ACCOUNTS_EXECUTIVE';
+    }
+
+    // Centre Authorization for Accounts Executive (Strict ID match in authorizedCentreIds; no '*' wildcard)
+    function canAccessCentre(centreId) {
+      return isAccountsExecutive() &&
+        isValidId(centreId) &&
+        ('authorizedCentreIds' in getUserData()) &&
+        getUserData().authorizedCentreIds is list &&
+        getUserData().authorizedCentreIds.hasAny([centreId]);
+    }
+
+    // Role 2: PARENT (Strict RBAC from trusted user profile)
+    function isParent() {
+      return isSignedIn() && hasUserDoc() && getUserData().role == 'PARENT';
+    }
+
+    // Parent Student Linkage Check (Strict UID-based or linked student ID verification)
+    function isLinkedParentOfStudent(studentId) {
+      return isParent() &&
+        isValidId(studentId) &&
+        ('linkedStudentIds' in getUserData()) &&
+        getUserData().linkedStudentIds is list &&
+        getUserData().linkedStudentIds.hasAny([studentId]);
+    }
+
+    // Invariant: Protected authorization and linkage fields CANNOT be modified through the client application.
+    // Role assignments, centre permissions, and student linkages must be provisioned strictly via server/Console.
+    function areUserProtectedFieldsUnchanged() {
+      return request.resource.data.role == resource.data.role &&
+        // authorizedCentreIds immutability
+        ((!('authorizedCentreIds' in resource.data) && !('authorizedCentreIds' in request.resource.data)) ||
+         (('authorizedCentreIds' in resource.data) && ('authorizedCentreIds' in request.resource.data) && 
+          request.resource.data.authorizedCentreIds == resource.data.authorizedCentreIds)) &&
+        // linkedStudentIds immutability
+        ((!('linkedStudentIds' in resource.data) && !('linkedStudentIds' in request.resource.data)) ||
+         (('linkedStudentIds' in resource.data) && ('linkedStudentIds' in request.resource.data) && 
+          request.resource.data.linkedStudentIds == resource.data.linkedStudentIds));
+    }
+
+    // User Accounts Collection (Parent & Accounts Executive)
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAccountsExecutive());
+      
+      // Self-registration: Only PARENT role with zero authorized centres and zero linked students.
+      // Privileges and linkages must be provisioned via trusted server administrative process or Firebase Console.
+      allow create: if isSignedIn() && request.auth.uid == userId && 
+                    request.resource.data.role == 'PARENT' &&
+                    (!('authorizedCentreIds' in request.resource.data) || request.resource.data.authorizedCentreIds.size() == 0) &&
+                    (!('linkedStudentIds' in request.resource.data) || request.resource.data.linkedStudentIds.size() == 0) &&
+                    request.resource.data.keys().hasOnly(['id', 'role', 'name', 'phone', 'email', 'linkedStudentIds', 'authorizedCentreIds', 'createdAt']);
+      
+      // Updates: Client applications CAN NEVER modify role, authorizedCentreIds, or linkedStudentIds.
+      // Neither the user nor an Accounts Executive can alter these protected fields.
+      // Updates are permitted for basic contact info (e.g., phone, name), provided protected fields remain strictly unchanged.
+      allow update: if isSignedIn() && 
+                    (request.auth.uid == userId || isAccountsExecutive()) &&
+                    areUserProtectedFieldsUnchanged();
+      
+      allow delete: if false;
+    }
+
+    // Centres (Jaipur branches)
+    match /centres/{centreId} {
+      allow read: if isSignedIn();
+      allow write: if canAccessCentre(centreId);
+    }
+
+    // Batches
+    match /batches/{batchId} {
+      allow read: if isSignedIn();
+      allow write: if isValidId(batchId) && canAccessCentre(request.resource.data.centreId);
+    }
+
+    // Students
+    match /students/{studentId} {
+      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
+                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(studentId)));
+      allow write: if isValidId(studentId) && canAccessCentre(request.resource.data.centreId);
+    }
+
+    // Fee Plans
+    match /feePlans/{feePlanId} {
+      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
+                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow write: if isValidId(feePlanId) && canAccessCentre(request.resource.data.centreId);
+    }
+
+    // Instalments
+    match /instalments/{instalmentId} {
+      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
+                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      // Parents can NEVER modify instalments or balances
+      allow write: if isValidId(instalmentId) && canAccessCentre(request.resource.data.centreId);
+    }
+
+    // Payments & Receipts
+    match /payments/{paymentId} {
+      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
+                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      // Parents may submit a pending transaction intent; verified receipts can only be written by Accounts Executive
+      allow create: if (isAccountsExecutive() && canAccessCentre(request.resource.data.centreId)) ||
+                    (isParent() && request.resource.data.parentId == request.auth.uid && 
+                     request.resource.data.status == 'PENDING' && 
+                     isLinkedParentOfStudent(request.resource.data.studentId));
+      allow update, delete: if isValidId(paymentId) && canAccessCentre(resource.data.centreId);
+    }
+
+    // Automated Reminders
+    match /reminders/{reminderId} {
+      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
+                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow write: if isValidId(reminderId) && canAccessCentre(request.resource.data.centreId);
+    }
+
+    // Refund Policies (Parents can view versioned policies, only Accounts Executive can configure)
+    match /refundPolicies/{policyId} {
+      allow read: if isSignedIn();
+      allow write: if isAccountsExecutive() && isValidId(policyId);
+    }
+  }
+}

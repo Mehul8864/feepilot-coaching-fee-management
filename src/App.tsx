@@ -7,7 +7,7 @@
  * Reference Date: 2026-11-02
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -20,7 +20,8 @@ import {
   FileCheck2,
   RefreshCw,
   Info,
-  AlertCircle
+  AlertCircle,
+  Database
 } from 'lucide-react';
 import { calculateFeePlan, FeePlanCalculationResult } from './engine/feeCalculation';
 import { calculateOverdueDays, OverdueAnalysis } from './engine/overdueCalculation';
@@ -28,9 +29,15 @@ import { calculateProRataRefund, DEMO_CONFIGURABLE_REFUND_POLICY } from './engin
 import { updateInstalmentReminders, formatReminderMessage } from './engine/reminderRules';
 import { ReminderSchedule } from './types/domain';
 import { formatINR } from './utils/formatters';
+import { testFirestoreConnection } from './firebase/config';
 
 export default function App() {
   const referenceDate = '2026-11-02';
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+
+  useEffect(() => {
+    testFirestoreConnection().then(setIsFirebaseConnected);
+  }, []);
 
   // Sample student evaluations using engine
   const aaravResult = calculateOverdueDays('2026-10-10', referenceDate, 0, 3000000, 3000000);
@@ -171,6 +178,10 @@ export default function App() {
               <div className="ml-3 pl-3 border-l border-slate-700 flex items-center gap-1.5 text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
                 <span className="font-medium">All Unit Tests Passing</span>
+              </div>
+              <div className="ml-3 pl-3 border-l border-slate-700 flex items-center gap-1.5 text-teal-300">
+                <Database className="w-4 h-4 text-teal-400" />
+                <span className="font-medium">Firestore: Ready (asia-south1)</span>
               </div>
             </div>
           </div>

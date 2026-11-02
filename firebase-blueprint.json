@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "Centre": {
+      "title": "Centre",
+      "description": "Coaching institute branch centre in Jaipur",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique centre ID" },
+        "code": { "type": "string", "description": "Centre short code" },
+        "name": { "type": "string", "description": "Centre display name" },
+        "city": { "type": "string", "description": "City name e.g. Jaipur" },
+        "address": { "type": "string", "description": "Branch physical address" }
+      },
+      "required": ["id", "code", "name", "city"]
+    },
+    "Batch": {
+      "title": "Batch",
+      "description": "Academic coaching batch or course section",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique batch ID" },
+        "centreId": { "type": "string", "description": "Associated centre ID" },
+        "name": { "type": "string", "description": "Batch name e.g. JEE 2027 Morning" },
+        "courseType": { "type": "string", "description": "JEE, NEET or Foundation", "enum": ["JEE", "NEET", "FOUNDATION"] },
+        "academicYear": { "type": "string", "description": "Academic target year" },
+        "startDate": { "type": "string", "description": "Batch start date YYYY-MM-DD" }
+      },
+      "required": ["id", "centreId", "name", "courseType"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Enrolled coaching student record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique student document ID" },
+        "rollNumber": { "type": "string", "description": "Student roll number e.g. STU-0412" },
+        "fullName": { "type": "string", "description": "Student full legal name" },
+        "parentName": { "type": "string", "description": "Parent or guardian full name" },
+        "parentPhone": { "type": "string", "description": "Parent primary contact number" },
+        "parentLanguage": { "type": "string", "description": "Language preference", "enum": ["en", "hi"] },
+        "centreId": { "type": "string", "description": "Enrolled centre ID" },
+        "batchId": { "type": "string", "description": "Enrolled batch ID" },
+        "enrolledDate": { "type": "string", "description": "Date of enrollment YYYY-MM-DD" },
+        "consentGiven": { "type": "boolean", "description": "Parent consent flag for notifications" }
+      },
+      "required": ["id", "rollNumber", "fullName", "parentPhone", "centreId", "batchId"]
+    },
+    "FeePlan": {
+      "title": "FeePlan",
+      "description": "Fee plan record calculated in integer paise",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique fee plan ID" },
+        "studentId": { "type": "string", "description": "Associated student ID" },
+        "grossAmountPaise": { "type": "number", "description": "Gross course fee in integer paise" },
+        "discountAmountPaise": { "type": "number", "description": "Discount in integer paise" },
+        "taxableAmountPaise": { "type": "number", "description": "Taxable amount in integer paise" },
+        "gstRatePercent": { "type": "number", "description": "GST rate percentage" },
+        "cgstAmountPaise": { "type": "number", "description": "50% CGST in integer paise" },
+        "sgstAmountPaise": { "type": "number", "description": "50% SGST in integer paise" },
+        "totalGstAmountPaise": { "type": "number", "description": "Total GST in integer paise" },
+        "totalPayablePaise": { "type": "number", "description": "Total fee payable in integer paise" },
+        "instalmentCount": { "type": "number", "description": "Number of instalments" }
+      },
+      "required": ["id", "studentId", "grossAmountPaise", "taxableAmountPaise", "totalPayablePaise"]
+    },
+    "Instalment": {
+      "title": "Instalment",
+      "description": "Scheduled fee instalment record in integer paise",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique instalment ID" },
+        "feePlanId": { "type": "string", "description": "Parent fee plan ID" },
+        "studentId": { "type": "string", "description": "Associated student ID" },
+        "instalmentNumber": { "type": "number", "description": "Instalment sequence index" },
+        "dueDate": { "type": "string", "description": "Due date in YYYY-MM-DD format" },
+        "amountPaise": { "type": "number", "description": "Instalment due in integer paise" },
+        "paidAmountPaise": { "type": "number", "description": "Amount paid in integer paise" },
+        "outstandingBalancePaise": { "type": "number", "description": "Remaining balance in integer paise" },
+        "status": { "type": "string", "description": "Instalment payment status", "enum": ["PAID", "PARTIALLY_PAID", "OVERDUE", "DUE_SOON", "UPCOMING"] }
+      },
+      "required": ["id", "feePlanId", "studentId", "dueDate", "amountPaise", "status"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Verified fee payment and GST receipt transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Payment transaction ID" },
+        "receiptNumber": { "type": "string", "description": "GST receipt number e.g. REC-2026-00412" },
+        "instalmentId": { "type": "string", "description": "Target instalment ID" },
+        "studentId": { "type": "string", "description": "Student ID" },
+        "amountPaise": { "type": "number", "description": "Amount paid in integer paise" },
+        "paymentMethod": { "type": "string", "description": "UPI, CARD, NETBANKING, CASH, CHEQUE", "enum": ["UPI", "CARD", "NETBANKING", "CASH", "CHEQUE", "NEFT_RTGS"] },
+        "transactionRef": { "type": "string", "description": "Bank UTR or gateway transaction reference" },
+        "status": { "type": "string", "description": "Payment status", "enum": ["VERIFIED", "PENDING", "FAILED"] },
+        "paidAt": { "type": "string", "description": "ISO 8601 payment timestamp" }
+      },
+      "required": ["id", "receiptNumber", "instalmentId", "studentId", "amountPaise", "status"]
+    },
+    "ReminderSchedule": {
+      "title": "ReminderSchedule",
+      "description": "Scheduled reminder notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Reminder task ID" },
+        "instalmentId": { "type": "string", "description": "Target instalment ID" },
+        "studentId": { "type": "string", "description": "Target student ID" },
+        "stage": { "type": "string", "description": "Reminder stage", "enum": ["BEFORE_DUE_3D", "ON_DUE_DATE", "OVERDUE_3D", "OVERDUE_7D", "OVERDUE_15D"] },
+        "scheduledDate": { "type": "string", "description": "Scheduled date YYYY-MM-DD" },
+        "language": { "type": "string", "description": "Language code", "enum": ["en", "hi"] },
+        "amountDuePaise": { "type": "number", "description": "Amount due in integer paise" },
+        "status": { "type": "string", "description": "Status of reminder", "enum": ["SCHEDULED", "SENT", "CANCELLED_BY_PAYMENT"] }
+      },
+      "required": ["id", "instalmentId", "studentId", "stage", "scheduledDate", "status"]
+    },
+    "RefundPolicy": {
+      "title": "RefundPolicy",
+      "description": "Versioned configurable refund policy parameters",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Policy identifier" },
+        "version": { "type": "string", "description": "Policy version tag" },
+        "label": { "type": "string", "description": "Policy display title" },
+        "effectiveDate": { "type": "string", "description": "Effective start date" },
+        "nonRefundableRegistrationFeePaise": { "type": "number", "description": "Non-refundable registration fee" },
+        "kitMaterialCostPaise": { "type": "number", "description": "Kit and materials deduction" },
+        "adminFeePercentage": { "type": "number", "description": "Permitted admin fee percent" }
+      },
+      "required": ["id", "version", "nonRefundableRegistrationFeePaise", "kitMaterialCostPaise"]
+    }
+  },
+  "firestore": {
+    "/centres/{centreId}": {
+      "schema": "Centre",
+      "description": "Coaching institute branch centres in Jaipur"
+    },
+    "/batches/{batchId}": {
+      "schema": "Batch",
+      "description": "Academic batches"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Student master profiles"
+    },
+    "/feePlans/{feePlanId}": {
+      "schema": "FeePlan",
+      "description": "Student fee plans and tax calculations"
+    },
+    "/instalments/{instalmentId}": {
+      "schema": "Instalment",
+      "description": "Instalment ledger and balance records"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment records and GST receipts"
+    },
+    "/reminders/{reminderId}": {
+      "schema": "ReminderSchedule",
+      "description": "Automated payment reminders and cancellation states"
+    },
+    "/refundPolicies/{policyId}": {
+      "schema": "RefundPolicy",
+      "description": "Versioned configurable refund policies"
+    }
+  }
+}
