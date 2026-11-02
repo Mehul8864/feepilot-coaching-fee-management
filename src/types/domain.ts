@@ -12,6 +12,19 @@ export type CurrencyPaise = number; // Integer paise e.g. ₹30,000 = 3000000 pa
 
 export type LanguageCode = 'en' | 'hi';
 
+export type UserRole = 'ACCOUNTS_EXECUTIVE' | 'PARENT';
+
+export interface UserProfile {
+  id: string; // Firebase Auth UID
+  role: UserRole;
+  name?: string;
+  email?: string;
+  phone?: string;
+  authorizedCentreIds?: string[]; // For ACCOUNTS_EXECUTIVE
+  linkedStudentIds?: string[]; // For PARENT
+  createdAt?: string;
+}
+
 export type InstalmentStatus = 
   | 'PAID'
   | 'PARTIALLY_PAID'
