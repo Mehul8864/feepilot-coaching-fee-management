@@ -73,6 +73,7 @@ export const translations = {
     errAppCredential: 'App verification credential error. In development, please use the test number +1 650-555-3434.',
     errCaptchaFailed: 'Security verification (reCAPTCHA) failed. Please refresh and retry.',
     errNetwork: 'Network connectivity error. Please check your internet connection and retry.',
+    errOperationNotAllowed: 'Phone authentication is restricted or region is not enabled (auth/operation-not-allowed). In Firebase Console, check SMS Region Policy under Authentication > Settings.',
     
     // Developer Diagnostic Labels
     devDiagnosticTitle: 'Developer Diagnostics (Firebase Preview)',
@@ -167,6 +168,7 @@ export const translations = {
     errAppCredential: 'ऐप सत्यापन त्रुटि। विकास परिवेश में कृपया परीक्षण नंबर +1 650-555-3434 का उपयोग करें।',
     errCaptchaFailed: 'सुरक्षा सत्यापन (reCAPTCHA) विफल रहा। कृपया पृष्ठ रीफ्रेश करें और पुनः प्रयास करें।',
     errNetwork: 'नेटवर्क कनेक्टिविटी त्रुटि। कृपया इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।',
+    errOperationNotAllowed: 'फ़ोन प्रमाणीकरण प्रतिबंधित है या यह क्षेत्र सक्षम नहीं है (auth/operation-not-allowed)। फ़ायरबेस कंसोल में Authentication > Settings के अंतर्गत SMS Region Policy जांचें।',
 
     // Developer Diagnostic Labels
     devDiagnosticTitle: 'डेवलपर डायग्नोस्टिक्स (फ़ायरबेस पूर्वावलोकन)',

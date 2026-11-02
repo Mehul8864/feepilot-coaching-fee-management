@@ -30,6 +30,7 @@ import { getTranslation } from '../../utils/i18n';
 import { formatINR } from '../../utils/formatters';
 import { calculateOverdueDays } from '../../engine/overdueCalculation';
 import { LanguageToggle } from '../common/LanguageToggle';
+import { isDevEnvironment } from '../../services/authService';
 
 // Sample students matching Company A benchmark cohort
 const SAMPLE_STUDENTS: Record<string, {
@@ -121,13 +122,15 @@ export function ParentPortalView({ onOpenTestbench }: { onOpenTestbench: () => v
 
           <div className="flex items-center gap-3">
             <LanguageToggle />
-            <button
-              type="button"
-              onClick={onOpenTestbench}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-teal-300 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
-            >
-              <span>{t.backToWorkbench}</span>
-            </button>
+            {isDevEnvironment() && (
+              <button
+                type="button"
+                onClick={onOpenTestbench}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-teal-300 px-3 py-1.5 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
+              >
+                <span>{t.backToWorkbench}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => logout()}
@@ -198,23 +201,25 @@ export function ParentPortalView({ onOpenTestbench }: { onOpenTestbench: () => v
                 {t.unlinkedAction}
               </p>
               <div className="pt-2 border-t border-amber-200/60 font-mono text-[11px] text-amber-900">
-                Support Helpline: <strong className="text-slate-900">+91 141-2780000</strong> (Jaipur Central Accounts)
+                Support Helpline: <strong className="text-slate-900">[Jaipur Centre Admin Desk - Contact Details Configurable]</strong>
               </div>
             </div>
 
-            {/* Link to Engineering Testbench for Sample Student Verifications */}
-            <div className="pt-4 border-t border-slate-200 space-y-2 text-xs">
-              <p className="text-slate-500">
-                To test the sample student financial calculations (Aarav, Ishita, Mohit), open the engineering testbench:
-              </p>
-              <button
-                type="button"
-                onClick={onOpenTestbench}
-                className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-teal-300 font-semibold transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
-              >
-                <span>{t.backToWorkbench}</span>
-              </button>
-            </div>
+            {/* Link to Engineering Testbench for Sample Student Verifications (Developer Mode Only) */}
+            {isDevEnvironment() && (
+              <div className="pt-4 border-t border-slate-200 space-y-2 text-xs">
+                <p className="text-slate-500">
+                  To test the sample student financial calculations (Aarav, Ishita, Mohit), open the engineering testbench:
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenTestbench}
+                  className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-teal-300 font-semibold transition-colors inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <span>{t.backToWorkbench}</span>
+                </button>
+              </div>
+            )}
           </section>
         ) : (
           /* CONDITION 2: LINKED STUDENT LEDGER & QUICK-PAY PORTAL */

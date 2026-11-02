@@ -48,6 +48,12 @@ let globalRecaptchaVerifier: RecaptchaVerifier | null = null;
  * Checks whether the current execution is within a local/development environment.
  */
 export function isDevEnvironment(): boolean {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1' || h.includes('.run.app') || h.includes('aistudio')) {
+      return true;
+    }
+  }
   if (typeof import.meta !== 'undefined' && import.meta.env) {
     return Boolean(import.meta.env.DEV);
   }
@@ -69,7 +75,9 @@ export function buildAuthDiagnostic(err: any, stage: AuthStage): AuthDiagnosticI
 
   let suggestedAction = `Check browser network tab and Firebase console status for stage ${stage}.`;
 
-  if (code === 'auth/unauthorized-domain') {
+  if (code === 'auth/operation-not-allowed' || code.includes('operation-not-allowed') || rawMessage.includes('OPERATION_NOT_ALLOWED')) {
+    suggestedAction = `Phone Authentication failed with "auth/operation-not-allowed". Root Cause: In Firebase Console (Authentication > Settings > SMS region policy), country code "+1" (United States) is not enabled for test number ${FIREBASE_TEST_PHONE}. In Firebase Console: 1. Go to Authentication > Settings > SMS region policy and ensure "United States (+1)" is enabled. 2. In Authentication > Sign-in method, ensure "Phone" is toggled Enabled and click Save.`;
+  } else if (code === 'auth/unauthorized-domain') {
     suggestedAction = `The domain "${hostname}" is not authorized. In Firebase Console (Authentication > Settings > Authorized Domains), click "Add Domain" and add "${hostname}".`;
   } else if (code === 'auth/invalid-app-credential') {
     suggestedAction = `App verification was rejected. In development, verify using configured test number ${FIREBASE_TEST_PHONE} with app verification disabled. For live numbers, verify reCAPTCHA and domain settings.`;
@@ -310,6 +318,8 @@ export function mapAuthErrorMessage(errorCode: string, lang: LanguageCode): stri
       return t.errCaptchaFailed;
     case 'auth/network-request-failed':
       return t.errNetwork;
+    case 'auth/operation-not-allowed':
+      return t.errOperationNotAllowed;
     case 'UNAUTHORIZED_STAFF_RECORD_MISSING':
       return t.errUserNotFound;
     case 'ROLE_MISMATCH_NOT_STAFF':

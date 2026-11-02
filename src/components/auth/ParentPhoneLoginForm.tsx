@@ -240,14 +240,26 @@ export function ParentPhoneLoginForm() {
         <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-start gap-2.5 animate-fadeIn">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold block mb-0.5">Authentication Notice</span>
-            <span className="leading-relaxed text-red-800">{errorMessage}</span>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="font-semibold text-red-900">Authentication Error</span>
+              {diagnosticInfo?.code && (
+                <span className="font-mono text-[10px] bg-red-100 text-red-800 border border-red-300 px-1.5 py-0.5 rounded font-bold">
+                  {diagnosticInfo.code}
+                </span>
+              )}
+            </div>
+            <p className="leading-relaxed text-red-800 font-medium">{errorMessage}</p>
+            {diagnosticInfo?.message && diagnosticInfo.message !== errorMessage && !diagnosticInfo.message.includes('[object Object]') && (
+              <p className="mt-1.5 text-[11px] font-mono text-red-900 bg-red-100/70 p-2 rounded border border-red-200 break-words">
+                Backend Details: {diagnosticInfo.message}
+              </p>
+            )}
           </div>
         </div>
       )}
 
       {/* SAFE DEVELOPER-MODE DIAGNOSTIC PANEL (Preview Environment) */}
-      {isDev && diagnosticInfo && (
+      {(isDev || Boolean(diagnosticInfo)) && diagnosticInfo && (
         <div className="p-3.5 bg-slate-900 text-slate-100 border border-slate-700 rounded-lg text-xs space-y-2.5 shadow-md">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <div className="flex items-center gap-1.5 font-semibold text-emerald-400">

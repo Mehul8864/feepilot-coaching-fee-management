@@ -21,6 +21,8 @@ import {
 } from './authService';
 import { getTranslation } from '../utils/i18n';
 import { UserRole, UserProfile } from '../types/domain';
+import { auth } from '../firebase/config';
+import firebaseConfig from '../../firebase-applet-config.json' with { type: 'json' };
 
 test('AUTH ROLES: Strictly allows only ACCOUNTS_EXECUTIVE and PARENT', () => {
   const allowedRoles: UserRole[] = ['ACCOUNTS_EXECUTIVE', 'PARENT'];
@@ -258,4 +260,49 @@ test('AUTH PHONE SECURITY: Test-only app verification toggle invariant', () => {
   assert.equal(shouldDisableAppVerification(false, '+16505553434'), false);
   assert.equal(shouldDisableAppVerification(false, '+919829012345'), false);
 });
+
+test('AUTH PHONE DIAGNOSTICS: Handling and diagnosis of auth/operation-not-allowed', () => {
+  // Test error mapping
+  const enMsg = mapAuthErrorMessage('auth/operation-not-allowed', 'en');
+  const hiMsg = mapAuthErrorMessage('auth/operation-not-allowed', 'hi');
+
+  assert.ok(enMsg.includes('auth/operation-not-allowed'), 'En message contains auth/operation-not-allowed');
+  assert.ok(enMsg.includes('SMS Region Policy'), 'En message directs to SMS Region Policy in Console');
+  assert.ok(hiMsg.includes('auth/operation-not-allowed'), 'Hi message contains auth/operation-not-allowed');
+  assert.ok(hiMsg.includes('SMS Region Policy'), 'Hi message directs to SMS Region Policy');
+
+  // Test diagnostic builder with raw backend error
+  const rawErr = {
+    code: 'auth/operation-not-allowed',
+    message: 'OPERATION_NOT_ALLOWED : SMS unable to be sent until this region enabled by the app developer.'
+  };
+
+  const diag = buildAuthDiagnostic(rawErr, 'SEND_PHONE_OTP');
+  assert.equal(diag.stage, 'SEND_PHONE_OTP');
+  assert.equal(diag.code, 'auth/operation-not-allowed');
+  assert.ok(diag.suggestedAction.includes('SMS region policy'), 'Suggested action highlights SMS region policy');
+  assert.ok(diag.suggestedAction.includes('+1'), 'Suggested action mentions +1 United States country code');
+  assert.ok(diag.suggestedAction.includes(FIREBASE_TEST_PHONE), 'Suggested action mentions configured test phone');
+  assert.ok(diag.message.includes('SMS unable to be sent until this region enabled'), 'Preserves backend explanation');
+});
+
+test('FIREBASE INSTANCE CONFIGURATION: Verification of project ID, tenant isolation, and config consistency', () => {
+  // 1. Verify active Firebase App projectId matches expected project
+  assert.equal(auth.app.options.projectId, 'gen-lang-client-0899438205');
+  assert.equal(auth.app.options.projectId, FIREBASE_PROJECT_ID);
+
+  // 2. Verify Auth tenant isolation: tenantId must be null (no unintended multi-tenancy)
+  assert.equal(auth.tenantId, null);
+
+  // 3. Verify config consistency across authDomain and storageBucket
+  assert.equal(firebaseConfig.projectId, 'gen-lang-client-0899438205');
+  assert.equal(firebaseConfig.authDomain, 'gen-lang-client-0899438205.firebaseapp.com');
+  assert.equal(firebaseConfig.storageBucket, 'gen-lang-client-0899438205.firebasestorage.app');
+  assert.equal(firebaseConfig.messagingSenderId, '279280875325');
+
+  // 4. Verify API key is present and non-empty without exposing it
+  assert.equal(typeof firebaseConfig.apiKey, 'string');
+  assert.ok(firebaseConfig.apiKey.length > 20, 'API key is configured and valid format');
+});
+
 
