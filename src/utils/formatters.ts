@@ -17,6 +17,10 @@ import { CurrencyPaise } from '../types/domain';
  * 0 paise -> "₹0.00"
  */
 export function formatINR(paise: CurrencyPaise): string {
+  if (typeof paise !== 'number' || !Number.isInteger(paise)) {
+    throw new Error(`Invalid currency amount: ${paise}. Must be an integer number of paise.`);
+  }
+
   const isNegative = paise < 0;
   const absPaise = Math.abs(paise);
   const rupees = absPaise / 100;

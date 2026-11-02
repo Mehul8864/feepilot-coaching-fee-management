@@ -57,6 +57,12 @@ export function calculateProRataRefund(
     throw new Error(`Invalid total paid amount: ${totalPaidPaise}. Must be a non-negative integer in paise.`);
   }
 
+  if (grossCourseFeePaise !== undefined) {
+    if (!Number.isInteger(grossCourseFeePaise) || grossCourseFeePaise < 0) {
+      throw new Error(`Invalid gross course fee: ${grossCourseFeePaise}. Must be a non-negative integer in paise.`);
+    }
+  }
+
   if (!Number.isInteger(classesAttended) || classesAttended < 0) {
     throw new Error(`Invalid classes attended: ${classesAttended}. Must be an integer >= 0.`);
   }

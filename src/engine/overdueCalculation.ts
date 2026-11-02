@@ -25,9 +25,10 @@ export interface OverdueAnalysis {
 
 /**
  * Parses YYYY-MM-DD string into UTC midnight timestamp to guarantee timezone independence.
+ * Strictly verifies that the calendar day exists (rejects e.g. 2026-02-31, 2026-13-01, 2026-04-31).
  */
-function parseDateToUtcMidnight(dateStr: string): number {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+export function parseDateToUtcMidnight(dateStr: string): number {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     throw new Error(`Invalid date format: '${dateStr}'. Expected YYYY-MM-DD.`);
   }
 
@@ -37,10 +38,19 @@ function parseDateToUtcMidnight(dateStr: string): number {
   const day = parseInt(dayStr, 10);
 
   if (month < 1 || month > 12 || day < 1 || day > 31) {
-    throw new Error(`Invalid calendar date: '${dateStr}'.`);
+    throw new Error(`Invalid calendar date: '${dateStr}'. Month must be 01-12 and day must be 01-31.`);
   }
 
-  return Date.UTC(year, month - 1, day);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utcDate.getUTCFullYear() !== year ||
+    utcDate.getUTCMonth() !== month - 1 ||
+    utcDate.getUTCDate() !== day
+  ) {
+    throw new Error(`Invalid calendar date: '${dateStr}' does not exist on the calendar.`);
+  }
+
+  return utcDate.getTime();
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -67,6 +77,12 @@ export function calculateOverdueDays(
 
   if (!Number.isInteger(paidAmountPaise) || paidAmountPaise < 0) {
     throw new Error(`Invalid paid amount: ${paidAmountPaise}. Must be a non-negative integer in paise.`);
+  }
+
+  if (totalAmountPaise !== undefined) {
+    if (!Number.isInteger(totalAmountPaise) || totalAmountPaise < 0) {
+      throw new Error(`Invalid total amount: ${totalAmountPaise}. Must be a non-negative integer in paise.`);
+    }
   }
 
   const dueUtc = parseDateToUtcMidnight(dueDateStr);

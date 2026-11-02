@@ -324,6 +324,40 @@ test('VALIDATION: Rejects negative fees, excessive discounts, and invalid calend
     () => calculateProRataRefund(DEMO_CONFIGURABLE_REFUND_POLICY, 5000000, 105, 100),
     /Classes attended .* cannot exceed total scheduled classes/
   );
+
+  // Strict Calendar Date Validation: Rejects invalid calendar dates that do not exist
+  assert.throws(
+    () => calculateOverdueDays('2026-02-31', REFERENCE_DATE, 5000),
+    /Invalid calendar date: '2026-02-31' does not exist on the calendar/
+  );
+
+  assert.throws(
+    () => calculateOverdueDays('2026-13-01', REFERENCE_DATE, 5000),
+    /Invalid calendar date: '2026-13-01'/
+  );
+
+  assert.throws(
+    () => calculateOverdueDays('2026-04-31', REFERENCE_DATE, 5000),
+    /Invalid calendar date: '2026-04-31' does not exist on the calendar/
+  );
+
+  assert.throws(
+    () => calculateOverdueDays('2026-02-29', REFERENCE_DATE, 5000),
+    /Invalid calendar date: '2026-02-29' does not exist on the calendar/
+  );
+
+  // Valid leap year date must not throw
+  assert.doesNotThrow(
+    () => calculateOverdueDays('2024-02-29', '2024-03-01', 5000)
+  );
+
+  // Money Inputs must be non-negative integer paise (reject floating point or negative amounts)
+  assert.throws(() => calculateFeePlan(1000.5, 0, 18), /Must be a non-negative integer in paise/);
+  assert.throws(() => calculateFeePlan(1000, 50.25, 18), /Must be a non-negative integer in paise/);
+  assert.throws(() => calculateOverdueDays('2026-10-10', REFERENCE_DATE, 100.5), /Must be a non-negative integer in paise/);
+  assert.throws(() => calculateOverdueDays('2026-10-10', REFERENCE_DATE, 100, 50.5), /Must be a non-negative integer in paise/);
+  assert.throws(() => calculateProRataRefund(DEMO_CONFIGURABLE_REFUND_POLICY, 1000.5, 5, 50), /Must be a non-negative integer in paise/);
+  assert.throws(() => formatINR(100.5), /Must be an integer number of paise/);
 });
 
 // -------------------------------------------------------------
@@ -336,4 +370,28 @@ test('FORMATTER: Formats Indian Currency with exactly two decimal places (e.g. �
   assert.equal(formatINR(1500000), '₹15,000.00', '1,500,000 paise must format as ₹15,000.00');
   assert.equal(formatINR(0), '₹0.00', '0 paise must format as ₹0.00');
   assert.equal(formatINR(10620000), '₹1,06,200.00', '10,620,000 paise must format as ₹1,06,200.00');
+});
+
+// -------------------------------------------------------------
+// 7. AUDIT: GST RECONCILIATION & EXACT PAISE INVARIANTS
+// -------------------------------------------------------------
+
+test('AUDIT: GST split reconciliation and penny-drop absorption across odd amounts', () => {
+  // Test case with odd numbers producing half-paise fractions:
+  // Taxable amount: ₹49,999.99 (4,999,999 paise)
+  // GST rate: 18% -> CGST (9%) = round(449,999.91) = 450,000 paise
+  // SGST (9%) = round(449,999.91) = 450,000 paise
+  // Total GST = 900,000 paise
+  // Total payable = 4,999,999 + 900,000 = 5,899,999 paise
+  const plan = calculateFeePlan(4999999, 0, 18, 3);
+
+  assert.equal(plan.cgstAmountPaise, 450000);
+  assert.equal(plan.sgstAmountPaise, 450000);
+  assert.equal(plan.totalGstAmountPaise, 900000);
+  assert.equal(plan.cgstAmountPaise + plan.sgstAmountPaise, plan.totalGstAmountPaise);
+  assert.equal(plan.totalPayablePaise, plan.taxableAmountPaise + plan.totalGstAmountPaise);
+
+  // Invariant: sum of instalments must equal totalPayablePaise to the exact paisa
+  const sumOfInstalments = plan.instalmentAmountsPaise.reduce((a, b) => a + b, 0);
+  assert.equal(sumOfInstalments, plan.totalPayablePaise, 'Instalment sum must match total payable to the exact paisa');
 });
