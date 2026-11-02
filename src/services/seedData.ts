@@ -207,14 +207,29 @@ export const SEED_FEE_PLANS: (FeePlan & { centreId: string })[] = [
 ];
 
 // Instalments with exact benchmark amounts
-// 1. Aarav: Instalment 1 = ₹30,000 paid, zero balance
-const aaravInstalmentCalc = calculateOverdueDays('2026-10-10', REFERENCE_DATE, 0, 3000000, 3000000);
-// 2. Ishita: Instalment 1 = ₹30,000, ₹15,000 paid, ₹15,000 balance, 23 days overdue
-const ishitaInstalmentCalc = calculateOverdueDays('2026-10-10', REFERENCE_DATE, 1500000, 1500000, 3000000);
-// 3. Mohit: Instalment 1 = ₹40,000, zero paid, 13 days until due
-const mohitInstalmentCalc = calculateOverdueDays('2026-11-15', REFERENCE_DATE, 4000000, 0, 4000000);
+// Financial Reconciliation:
+// In Jaipur coaching institute fee models, the initial admission/registration instalment is set to a fixed benchmark
+// (e.g. ₹30,000 for Aarav & Ishita, ₹40,000 for Mohit), while the remaining plan balance (gross - discount + 18% GST)
+// is distributed across the remaining 2 instalments (₹38,100 + ₹38,100 = ₹76,200; total = ₹1,06,200).
+// This reconciles the client's ₹30,000 initial paid instalment with the ₹1,06,200 annual plan total.
+
+// 1. Aarav Meena (PLAN-0412: ₹1,06,200 total)
+const aaravInstalment1Calc = calculateOverdueDays('2026-10-10', REFERENCE_DATE, 0, 3000000, 3000000);
+const aaravInstalment2Calc = calculateOverdueDays('2027-01-10', REFERENCE_DATE, 3810000, 0, 3810000);
+const aaravInstalment3Calc = calculateOverdueDays('2027-04-10', REFERENCE_DATE, 3810000, 0, 3810000);
+
+// 2. Ishita Sharma (PLAN-0587: ₹1,06,200 total)
+const ishitaInstalment1Calc = calculateOverdueDays('2026-10-10', REFERENCE_DATE, 1500000, 1500000, 3000000);
+const ishitaInstalment2Calc = calculateOverdueDays('2027-01-10', REFERENCE_DATE, 3810000, 0, 3810000);
+const ishitaInstalment3Calc = calculateOverdueDays('2027-04-10', REFERENCE_DATE, 3810000, 0, 3810000);
+
+// 3. Mohit Gurjar (PLAN-0219: ₹1,41,600 total)
+const mohitInstalment1Calc = calculateOverdueDays('2026-11-15', REFERENCE_DATE, 4000000, 0, 4000000);
+const mohitInstalment2Calc = calculateOverdueDays('2027-02-15', REFERENCE_DATE, 5080000, 0, 5080000);
+const mohitInstalment3Calc = calculateOverdueDays('2027-05-15', REFERENCE_DATE, 5080000, 0, 5080000);
 
 export const SEED_INSTALMENTS: (Instalment & { centreId: string })[] = [
+  // Aarav Meena (Vaishali Nagar Centre) - Sum = 30,000 + 38,100 + 38,100 = ₹1,06,200
   {
     id: 'INST-0412-1',
     feePlanId: 'PLAN-0412',
@@ -225,12 +240,46 @@ export const SEED_INSTALMENTS: (Instalment & { centreId: string })[] = [
     amountPaise: 3000000,
     paidAmountPaise: 3000000,
     outstandingBalancePaise: 0,
-    status: aaravInstalmentCalc.status,
-    overdueDays: aaravInstalmentCalc.overdueDays,
-    daysUntilDue: aaravInstalmentCalc.daysUntilDue,
-    isOverdue: aaravInstalmentCalc.isOverdue,
-    isPartiallyPaid: aaravInstalmentCalc.isPartiallyPaid,
+    status: aaravInstalment1Calc.status,
+    overdueDays: aaravInstalment1Calc.overdueDays,
+    daysUntilDue: aaravInstalment1Calc.daysUntilDue,
+    isOverdue: aaravInstalment1Calc.isOverdue,
+    isPartiallyPaid: aaravInstalment1Calc.isPartiallyPaid,
   },
+  {
+    id: 'INST-0412-2',
+    feePlanId: 'PLAN-0412',
+    studentId: 'STU-0412',
+    centreId: 'CENTRE-JAIPUR-VAISHALI',
+    instalmentNumber: 2,
+    dueDate: '2027-01-10',
+    amountPaise: 3810000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 3810000,
+    status: aaravInstalment2Calc.status,
+    overdueDays: aaravInstalment2Calc.overdueDays,
+    daysUntilDue: aaravInstalment2Calc.daysUntilDue,
+    isOverdue: aaravInstalment2Calc.isOverdue,
+    isPartiallyPaid: aaravInstalment2Calc.isPartiallyPaid,
+  },
+  {
+    id: 'INST-0412-3',
+    feePlanId: 'PLAN-0412',
+    studentId: 'STU-0412',
+    centreId: 'CENTRE-JAIPUR-VAISHALI',
+    instalmentNumber: 3,
+    dueDate: '2027-04-10',
+    amountPaise: 3810000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 3810000,
+    status: aaravInstalment3Calc.status,
+    overdueDays: aaravInstalment3Calc.overdueDays,
+    daysUntilDue: aaravInstalment3Calc.daysUntilDue,
+    isOverdue: aaravInstalment3Calc.isOverdue,
+    isPartiallyPaid: aaravInstalment3Calc.isPartiallyPaid,
+  },
+
+  // Ishita Sharma (Malviya Nagar Centre) - Sum = 30,000 + 38,100 + 38,100 = ₹1,06,200
   {
     id: 'INST-0587-1',
     feePlanId: 'PLAN-0587',
@@ -241,12 +290,46 @@ export const SEED_INSTALMENTS: (Instalment & { centreId: string })[] = [
     amountPaise: 3000000,
     paidAmountPaise: 1500000,
     outstandingBalancePaise: 1500000,
-    status: ishitaInstalmentCalc.status,
-    overdueDays: ishitaInstalmentCalc.overdueDays,
-    daysUntilDue: ishitaInstalmentCalc.daysUntilDue,
-    isOverdue: ishitaInstalmentCalc.isOverdue,
-    isPartiallyPaid: ishitaInstalmentCalc.isPartiallyPaid,
+    status: ishitaInstalment1Calc.status,
+    overdueDays: ishitaInstalment1Calc.overdueDays,
+    daysUntilDue: ishitaInstalment1Calc.daysUntilDue,
+    isOverdue: ishitaInstalment1Calc.isOverdue,
+    isPartiallyPaid: ishitaInstalment1Calc.isPartiallyPaid,
   },
+  {
+    id: 'INST-0587-2',
+    feePlanId: 'PLAN-0587',
+    studentId: 'STU-0587',
+    centreId: 'CENTRE-JAIPUR-MALVIYA',
+    instalmentNumber: 2,
+    dueDate: '2027-01-10',
+    amountPaise: 3810000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 3810000,
+    status: ishitaInstalment2Calc.status,
+    overdueDays: ishitaInstalment2Calc.overdueDays,
+    daysUntilDue: ishitaInstalment2Calc.daysUntilDue,
+    isOverdue: ishitaInstalment2Calc.isOverdue,
+    isPartiallyPaid: ishitaInstalment2Calc.isPartiallyPaid,
+  },
+  {
+    id: 'INST-0587-3',
+    feePlanId: 'PLAN-0587',
+    studentId: 'STU-0587',
+    centreId: 'CENTRE-JAIPUR-MALVIYA',
+    instalmentNumber: 3,
+    dueDate: '2027-04-10',
+    amountPaise: 3810000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 3810000,
+    status: ishitaInstalment3Calc.status,
+    overdueDays: ishitaInstalment3Calc.overdueDays,
+    daysUntilDue: ishitaInstalment3Calc.daysUntilDue,
+    isOverdue: ishitaInstalment3Calc.isOverdue,
+    isPartiallyPaid: ishitaInstalment3Calc.isPartiallyPaid,
+  },
+
+  // Mohit Gurjar (Tonk Road Centre) - Sum = 40,000 + 50,800 + 50,800 = ₹1,41,600
   {
     id: 'INST-0219-1',
     feePlanId: 'PLAN-0219',
@@ -257,11 +340,43 @@ export const SEED_INSTALMENTS: (Instalment & { centreId: string })[] = [
     amountPaise: 4000000,
     paidAmountPaise: 0,
     outstandingBalancePaise: 4000000,
-    status: mohitInstalmentCalc.status,
-    overdueDays: mohitInstalmentCalc.overdueDays,
-    daysUntilDue: mohitInstalmentCalc.daysUntilDue,
-    isOverdue: mohitInstalmentCalc.isOverdue,
-    isPartiallyPaid: mohitInstalmentCalc.isPartiallyPaid,
+    status: mohitInstalment1Calc.status,
+    overdueDays: mohitInstalment1Calc.overdueDays,
+    daysUntilDue: mohitInstalment1Calc.daysUntilDue,
+    isOverdue: mohitInstalment1Calc.isOverdue,
+    isPartiallyPaid: mohitInstalment1Calc.isPartiallyPaid,
+  },
+  {
+    id: 'INST-0219-2',
+    feePlanId: 'PLAN-0219',
+    studentId: 'STU-0219',
+    centreId: 'CENTRE-JAIPUR-TONK',
+    instalmentNumber: 2,
+    dueDate: '2027-02-15',
+    amountPaise: 5080000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 5080000,
+    status: mohitInstalment2Calc.status,
+    overdueDays: mohitInstalment2Calc.overdueDays,
+    daysUntilDue: mohitInstalment2Calc.daysUntilDue,
+    isOverdue: mohitInstalment2Calc.isOverdue,
+    isPartiallyPaid: mohitInstalment2Calc.isPartiallyPaid,
+  },
+  {
+    id: 'INST-0219-3',
+    feePlanId: 'PLAN-0219',
+    studentId: 'STU-0219',
+    centreId: 'CENTRE-JAIPUR-TONK',
+    instalmentNumber: 3,
+    dueDate: '2027-05-15',
+    amountPaise: 5080000,
+    paidAmountPaise: 0,
+    outstandingBalancePaise: 5080000,
+    status: mohitInstalment3Calc.status,
+    overdueDays: mohitInstalment3Calc.overdueDays,
+    daysUntilDue: mohitInstalment3Calc.daysUntilDue,
+    isOverdue: mohitInstalment3Calc.isOverdue,
+    isPartiallyPaid: mohitInstalment3Calc.isPartiallyPaid,
   },
 ];
 

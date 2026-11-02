@@ -104,3 +104,17 @@ test('SEED DATA CONFORMANCE: All documents have centreId for Firestore RBAC rule
     assert.ok(ALL_JAIPUR_CENTRE_IDS.includes(rem.centreId));
   }
 });
+
+test('FINANCIAL RECONCILIATION: Sum of instalments equals totalPayablePaise for each plan', () => {
+  for (const plan of SEED_FEE_PLANS) {
+    const studentInstalments = SEED_INSTALMENTS.filter((i) => i.feePlanId === plan.id);
+    assert.strictEqual(studentInstalments.length, plan.instalmentCount, `Student ${plan.studentId} has ${plan.instalmentCount} instalments`);
+    
+    const sumPaise = studentInstalments.reduce((acc, curr) => acc + curr.amountPaise, 0);
+    assert.strictEqual(
+      sumPaise, 
+      plan.totalPayablePaise, 
+      `Sum of instalments (${sumPaise}) must exactly equal totalPayablePaise (${plan.totalPayablePaise})`
+    );
+  }
+});

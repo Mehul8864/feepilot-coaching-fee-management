@@ -35,7 +35,9 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
   const t = getTranslation(language);
   const referenceDate = '2026-11-02';
 
-  const authorizedCentres = userProfile?.authorizedCentreIds || ['CENTRE-JAIPUR-VAISHALI', 'CENTRE-JAIPUR-MALVIYA'];
+  const authorizedCentres = (userProfile?.authorizedCentreIds && userProfile.authorizedCentreIds.length > 0)
+    ? userProfile.authorizedCentreIds
+    : ['CENTRE-JAIPUR-VAISHALI', 'CENTRE-JAIPUR-TONK', 'CENTRE-JAIPUR-MALVIYA', 'CENTRE-JAIPUR-VIDHYADHAR'];
   const [selectedCentre, setSelectedCentre] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -43,7 +45,7 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
     {
       roll: 'STU-0412',
       name: 'Aarav Meena',
-      parentPhone: '+91 94140 12345',
+      parentPhone: '+1 650-555-3434',
       batch: 'JEE 2027 Morning',
       centreId: 'CENTRE-JAIPUR-VAISHALI',
       centreName: 'Vaishali Nagar, Jaipur',
