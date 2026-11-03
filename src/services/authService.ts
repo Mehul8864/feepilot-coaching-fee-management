@@ -45,19 +45,35 @@ export interface AuthDiagnosticInfo {
 let globalRecaptchaVerifier: RecaptchaVerifier | null = null;
 
 /**
- * Checks whether the current execution is within a local/development environment.
+ * Checks whether the current execution is within a non-production development environment.
+ * In production builds (Vite PROD), strictly returns false to ensure development-only
+ * aids, debug widgets, and testing consoles are never rendered.
  */
 export function isDevEnvironment(): boolean {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    const h = window.location.hostname;
-    if (h === 'localhost' || h === '127.0.0.1' || h.includes('.run.app') || h.includes('aistudio')) {
+  // 1. Vite production build check (statically evaluated at build time)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    if (import.meta.env.PROD || import.meta.env.MODE === 'production') {
+      return false;
+    }
+    if (import.meta.env.DEV) {
       return true;
     }
   }
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    return Boolean(import.meta.env.DEV);
+
+  // 2. Node.js environment check
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+    return false;
   }
-  return typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+
+  // 3. Localhost hostname check (only when not in production)
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**

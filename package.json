@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/engine/engine.test.ts src/firebase/securityRules.test.ts src/services/auth.test.ts src/services/seedData.test.ts src/services/dashboard.test.ts"
+    "test": "tsx --test src/engine/engine.test.ts src/firebase/securityRules.test.ts src/services/auth.test.ts src/services/seedData.test.ts src/services/dashboard.test.ts src/services/parent.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
