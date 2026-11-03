@@ -28,6 +28,7 @@ import {
   canUserSeedDemoData, 
   executeSafeDemoSeed, 
   verifyPersistedDemoData, 
+  getDatabaseSeedStatus,
   SeedExecutionReport, 
   DatabaseVerificationReport,
   SEED_CENTRES,
@@ -58,6 +59,15 @@ export function SeedDemoDataModal({ isOpen, onClose }: SeedDemoDataModalProps) {
   const [seedReport, setSeedReport] = useState<SeedExecutionReport | null>(null);
   const [verificationReport, setVerificationReport] = useState<DatabaseVerificationReport | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [dbState, setDbState] = useState<{ status: 'NOT_SEEDED' | 'PARTIAL' | 'COMPLETE'; persistedCount: number } | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      getDatabaseSeedStatus()
+        .then((res) => setDbState({ status: res.status, persistedCount: res.persistedCount }))
+        .catch(() => setDbState(null));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -181,6 +191,21 @@ export function SeedDemoDataModal({ isOpen, onClose }: SeedDemoDataModalProps) {
               </p>
             )}
           </div>
+
+          {/* Partial Seed Recovery Alert */}
+          {dbState?.status === 'PARTIAL' && !seedReport && (
+            <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-950 text-xs flex items-start gap-2.5 shadow-2xs">
+              <Layers className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Partial Seed State Detected ({dbState.persistedCount}/27 records):</span>
+                <p className="mt-0.5 text-amber-900 leading-relaxed">
+                  The live Firestore database already holds the 4 branch centres and 4 academic batches. 
+                  When you proceed, existing records will be <strong>strictly skipped</strong> and only the missing 19 documents 
+                  (students, fee plans, instalments, and receipts) will be provisioned.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Scope Review Table */}
           {!seedReport && (

@@ -49,6 +49,21 @@ service cloud.firestore {
       return isSignedIn() && hasUserDoc() && getUserData().role == 'PARENT';
     }
 
+    // Helper: Safely resolve a student's centreId from /students/{studentId}
+    function getStudentCentre(studentId) {
+      return get(/databases/$(database)/documents/students/$(studentId)).data.centreId;
+    }
+
+    // Resolves centre access for financial and academic records either directly from centreId or via referenced student
+    function canAccessRecordCentre(data) {
+      return isAccountsExecutive() && (
+        (('centreId' in data) && isValidId(data.centreId) && canAccessCentre(data.centreId)) ||
+        (('studentId' in data) && isValidId(data.studentId) &&
+         exists(/databases/$(database)/documents/students/$(data.studentId)) &&
+         canAccessCentre(getStudentCentre(data.studentId)))
+      );
+    }
+
     // Parent Student Linkage Check (Strict UID-based or linked student ID verification)
     function isLinkedParentOfStudent(studentId) {
       return isParent() &&
@@ -108,43 +123,52 @@ service cloud.firestore {
 
     // Students
     match /students/{studentId} {
-      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
-                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(studentId)));
-      allow write: if isValidId(studentId) && canAccessCentre(request.resource.data.centreId);
+      allow get: if (isAccountsExecutive() && (resource == null || canAccessCentre(resource.data.centreId))) ||
+                  (isParent() && resource != null && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(studentId)));
+      allow list: if isAccountsExecutive() && canAccessCentre(resource.data.centreId);
+      allow create, update: if isValidId(studentId) && canAccessCentre(request.resource.data.centreId);
+      allow delete: if isValidId(studentId) && canAccessCentre(resource.data.centreId);
     }
 
     // Fee Plans
     match /feePlans/{feePlanId} {
-      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
-                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
-      allow write: if isValidId(feePlanId) && canAccessCentre(request.resource.data.centreId);
+      allow get: if (isAccountsExecutive() && (resource == null || canAccessRecordCentre(resource.data))) ||
+                  (isParent() && resource != null && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow list: if isAccountsExecutive() && canAccessRecordCentre(resource.data);
+      allow create, update: if isValidId(feePlanId) && canAccessRecordCentre(request.resource.data);
+      allow delete: if isValidId(feePlanId) && canAccessRecordCentre(resource.data);
     }
 
     // Instalments
     match /instalments/{instalmentId} {
-      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
-                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow get: if (isAccountsExecutive() && (resource == null || canAccessRecordCentre(resource.data))) ||
+                  (isParent() && resource != null && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow list: if isAccountsExecutive() && canAccessRecordCentre(resource.data);
       // Parents can NEVER modify instalments or balances
-      allow write: if isValidId(instalmentId) && canAccessCentre(request.resource.data.centreId);
+      allow create, update: if isValidId(instalmentId) && canAccessRecordCentre(request.resource.data);
+      allow delete: if isValidId(instalmentId) && canAccessRecordCentre(resource.data);
     }
 
     // Payments & Receipts
     match /payments/{paymentId} {
-      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
-                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow get: if (isAccountsExecutive() && (resource == null || canAccessRecordCentre(resource.data))) ||
+                  (isParent() && resource != null && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow list: if isAccountsExecutive() && canAccessRecordCentre(resource.data);
       // Parents may submit a pending transaction intent; verified receipts can only be written by Accounts Executive
-      allow create: if (isAccountsExecutive() && canAccessCentre(request.resource.data.centreId)) ||
+      allow create: if (isAccountsExecutive() && canAccessRecordCentre(request.resource.data)) ||
                     (isParent() && request.resource.data.parentId == request.auth.uid && 
                      request.resource.data.status == 'PENDING' && 
                      isLinkedParentOfStudent(request.resource.data.studentId));
-      allow update, delete: if isValidId(paymentId) && canAccessCentre(resource.data.centreId);
+      allow update, delete: if isValidId(paymentId) && canAccessRecordCentre(resource.data);
     }
 
     // Automated Reminders
     match /reminders/{reminderId} {
-      allow read: if (isAccountsExecutive() && canAccessCentre(resource.data.centreId)) ||
-                  (isParent() && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
-      allow write: if isValidId(reminderId) && canAccessCentre(request.resource.data.centreId);
+      allow get: if (isAccountsExecutive() && (resource == null || canAccessRecordCentre(resource.data))) ||
+                  (isParent() && resource != null && (resource.data.parentId == request.auth.uid || isLinkedParentOfStudent(resource.data.studentId)));
+      allow list: if isAccountsExecutive() && canAccessRecordCentre(resource.data);
+      allow create, update: if isValidId(reminderId) && canAccessRecordCentre(request.resource.data);
+      allow delete: if isValidId(reminderId) && canAccessRecordCentre(resource.data);
     }
 
     // Refund Policies (Parents can view versioned policies, only Accounts Executive can configure)

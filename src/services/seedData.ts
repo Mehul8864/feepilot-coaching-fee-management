@@ -501,14 +501,31 @@ export function canUserSeedDemoData(userProfile: UserProfile | null): { allowed:
 }
 
 /**
- * Safe, Idempotent Demo Data Seeder with Check-Before-Write.
+ * Sanitizes Firestore errors to guarantee no private credentials, phone numbers, or tokens leak into logs.
+ */
+export function sanitizeDiagnosticError(err: any): { code: string; message: string } {
+  const code = typeof err?.code === 'string' ? err.code : 'unknown';
+  let message = typeof err?.message === 'string' ? err.message : String(err || 'Unknown error');
+  // Redact phones and API keys
+  message = message.replace(/\+?[0-9]{10,14}/g, '[REDACTED_PHONE]');
+  message = message.replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED_KEY]');
+  return { code, message };
+}
+
+export function logSafeDiagnostic(operation: 'READ' | 'WRITE' | 'METADATA', collection: string, id: string, err: any) {
+  const { code, message } = sanitizeDiagnosticError(err);
+  console.warn(`[FeePilot Firestore Diagnostic] Op: ${operation} | Path: ${collection}/${id} | Code: ${code} | Message: ${message}`);
+}
+
+/**
+ * Safe, Idempotent Demo Data Seeder with Check-Before-Write and Partial Recovery.
  * 
  * Safety invariants:
  * 1. Requires explicit ACCOUNTS_EXECUTIVE authorization across all four Jaipur centres.
  * 2. NEVER touches the `/users` collection or alters user credentials.
  * 3. Does not overwrite existing manually updated payment records or modified instalment balances.
  * 4. Checks each record before writing to ensure idempotent re-runs do not duplicate data.
- * 5. Writes a versioned audit marker to `_health/feepilot_demo_seed_v1`.
+ * 5. Writes an audit marker with status ('COMPLETE' | 'PARTIAL' | 'FAILED') to `_health/feepilot_demo_seed_v1`.
  */
 export async function executeSafeDemoSeed(
   userProfile: UserProfile,
@@ -556,6 +573,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'centres', centre.id, err);
       items.push({
         collection: 'centres',
         id: centre.id,
@@ -588,6 +606,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'batches', batch.id, err);
       items.push({
         collection: 'batches',
         id: batch.id,
@@ -620,6 +639,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'students', student.id, err);
       items.push({
         collection: 'students',
         id: student.id,
@@ -652,6 +672,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'feePlans', plan.id, err);
       items.push({
         collection: 'feePlans',
         id: plan.id,
@@ -694,6 +715,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'instalments', instalment.id, err);
       items.push({
         collection: 'instalments',
         id: instalment.id,
@@ -726,6 +748,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'payments', payment.id, err);
       items.push({
         collection: 'payments',
         id: payment.id,
@@ -758,6 +781,7 @@ export async function executeSafeDemoSeed(
         });
       }
     } catch (err: any) {
+      logSafeDiagnostic('WRITE', 'reminders', reminder.id, err);
       items.push({
         collection: 'reminders',
         id: reminder.id,
@@ -767,23 +791,39 @@ export async function executeSafeDemoSeed(
     }
   }
 
+  const recordsCreated = items.filter((i) => i.status === 'CREATED').length;
+  const recordsSkipped = items.filter((i) => i.status === 'SKIPPED').length;
+  const conflictsCount = items.filter((i) => i.status === 'CONFLICT').length;
+  const errorsCount = items.filter((i) => i.status === 'ERROR').length;
+  const totalRequired = 27; // 4 centres + 4 batches + 3 students + 3 feePlans + 9 instalments + 2 payments + 2 reminders
+
+  const seedStatus: 'COMPLETE' | 'PARTIAL' | 'FAILED' =
+    errorsCount === 0 && (recordsCreated + recordsSkipped >= totalRequired)
+      ? 'COMPLETE'
+      : (recordsCreated > 0 || recordsSkipped > 0)
+      ? 'PARTIAL'
+      : 'FAILED';
+
   // 8. Audit & Version Metadata (Recorded under permitted health/metadata collection)
   processedCount++;
-  onProgress?.('Recording seed audit metadata marker...', processedCount, totalSteps);
+  onProgress?.(`Recording seed status (${seedStatus})...`, processedCount, totalSteps);
   const metadataDocId = 'feepilot_demo_seed_v1';
   const metadataPayload = {
     schemaVersion: '2026-11-03',
-    versionTag: '1.0.0-jaipur-cohort',
-    seededAt: new Date().toISOString(),
+    versionTag: '1.0.1-jaipur-cohort',
+    status: seedStatus,
+    lastAttemptAt: new Date().toISOString(),
+    completedAt: seedStatus === 'COMPLETE' ? new Date().toISOString() : null,
     operatorUid: userProfile.id,
     operatorEmail: userProfile.email || 'accounts.jaipur@feepilot.internal',
-    centresCount: SEED_CENTRES.length,
-    batchesCount: SEED_BATCHES.length,
-    studentsCount: SEED_STUDENTS.length,
-    feePlansCount: SEED_FEE_PLANS.length,
-    instalmentsCount: SEED_INSTALMENTS.length,
-    paymentsCount: SEED_PAYMENTS.length,
-    remindersCount: SEED_REMINDERS.length,
+    totalRequired,
+    recordsCreated,
+    recordsSkipped,
+    conflictsCount,
+    errorsCount,
+    failedRecords: items
+      .filter((i) => i.status === 'ERROR')
+      .map((i) => ({ collection: i.collection, id: i.id, error: i.details })),
   };
 
   try {
@@ -792,9 +832,10 @@ export async function executeSafeDemoSeed(
       collection: '_health',
       id: metadataDocId,
       status: 'CREATED',
-      details: 'Audit marker and schema version stamped successfully',
+      details: `Seed status marked as '${seedStatus}' in audit record`,
     });
   } catch (err: any) {
+    logSafeDiagnostic('METADATA', '_health', metadataDocId, err);
     items.push({
       collection: '_health',
       id: metadataDocId,
@@ -803,13 +844,8 @@ export async function executeSafeDemoSeed(
     });
   }
 
-  const recordsCreated = items.filter((i) => i.status === 'CREATED').length;
-  const recordsSkipped = items.filter((i) => i.status === 'SKIPPED').length;
-  const conflictsCount = items.filter((i) => i.status === 'CONFLICT').length;
-  const errorsCount = items.filter((i) => i.status === 'ERROR').length;
-
   return {
-    success: errorsCount === 0,
+    success: seedStatus === 'COMPLETE',
     timestamp: new Date().toISOString(),
     operatorUid: userProfile.id,
     operatorEmail: userProfile.email,
@@ -820,6 +856,43 @@ export async function executeSafeDemoSeed(
     items,
   };
 }
+
+/**
+ * Checks the current database seeding state without altering records.
+ */
+export async function getDatabaseSeedStatus(firestoreInstance: Firestore = db): Promise<{
+  status: 'NOT_SEEDED' | 'PARTIAL' | 'COMPLETE';
+  persistedCount: number;
+  totalRequired: number;
+  metadata?: any;
+}> {
+  const totalRequired = 27;
+  try {
+    const metaSnap = await getDoc(doc(firestoreInstance, '_health', 'feepilot_demo_seed_v1'));
+    if (!metaSnap.exists()) {
+      return { status: 'NOT_SEEDED', persistedCount: 0, totalRequired };
+    }
+    const metaData = metaSnap.data();
+    const studentSnaps = await Promise.all(
+      SEED_STUDENTS.map((s) => getDoc(doc(firestoreInstance, 'students', s.id)))
+    );
+    const existingStudentsCount = studentSnaps.filter((s) => s.exists()).length;
+    
+    if (existingStudentsCount === 3 && metaData.status === 'COMPLETE') {
+      return { status: 'COMPLETE', persistedCount: totalRequired, totalRequired, metadata: metaData };
+    }
+    
+    return {
+      status: 'PARTIAL',
+      persistedCount: (metaData.recordsCreated || 0) + (metaData.recordsSkipped || 0),
+      totalRequired,
+      metadata: metaData,
+    };
+  } catch {
+    return { status: 'NOT_SEEDED', persistedCount: 0, totalRequired };
+  }
+}
+
 
 /**
  * Performs a comprehensive readback verification against Firestore to ensure
