@@ -118,3 +118,49 @@ test('FINANCIAL RECONCILIATION: Sum of instalments equals totalPayablePaise for 
     );
   }
 });
+
+test('SEED AUTHORIZATION GATE: Only Accounts Executive with all 4 Jaipur centres can seed', async () => {
+  const { canUserSeedDemoData } = await import('./seedData');
+
+  // 1. Unauthenticated
+  assert.strictEqual(canUserSeedDemoData(null).allowed, false);
+
+  // 2. Parent role
+  assert.strictEqual(
+    canUserSeedDemoData({ id: 'parent-1', role: 'PARENT', linkedStudentIds: ['STU-0412'] }).allowed,
+    false
+  );
+
+  // 3. Accounts Executive with partial centres (e.g. only 2 of 4)
+  const partialExec = {
+    id: 'exec-1',
+    role: 'ACCOUNTS_EXECUTIVE' as const,
+    authorizedCentreIds: ['CENTRE-JAIPUR-VAISHALI', 'CENTRE-JAIPUR-MALVIYA'],
+  };
+  const partialCheck = canUserSeedDemoData(partialExec);
+  assert.strictEqual(partialCheck.allowed, false);
+  assert.ok(partialCheck.reason?.includes('Insufficient centre authorization'));
+
+  // 4. Accounts Executive with all 4 Jaipur centres
+  const fullyAuthorizedExec = {
+    id: 'exec-2',
+    role: 'ACCOUNTS_EXECUTIVE' as const,
+    authorizedCentreIds: [
+      'CENTRE-JAIPUR-VAISHALI',
+      'CENTRE-JAIPUR-TONK',
+      'CENTRE-JAIPUR-MALVIYA',
+      'CENTRE-JAIPUR-VIDHYADHAR',
+    ],
+  };
+  const fullCheck = canUserSeedDemoData(fullyAuthorizedExec);
+  assert.strictEqual(fullCheck.allowed, true);
+});
+
+test('PARENT PRIVACY: Parent phone masking protects identities', async () => {
+  const { maskPhoneNumber } = await import('../utils/formatters');
+
+  assert.strictEqual(maskPhoneNumber('+16505553434'), '+1 650-***-3434');
+  assert.strictEqual(maskPhoneNumber('+1 650-555-3434'), '+1 650-***-3434');
+  assert.strictEqual(maskPhoneNumber('+91 98290 00001'), '+91 98*** **001');
+  assert.strictEqual(maskPhoneNumber(null), '—');
+});

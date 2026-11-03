@@ -22,18 +22,21 @@ import {
   ArrowRight,
   ShieldCheck,
   Send,
-  Plus
+  Plus,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTranslation } from '../../utils/i18n';
-import { formatINR } from '../../utils/formatters';
+import { formatINR, maskPhoneNumber } from '../../utils/formatters';
 import { LanguageToggle } from '../common/LanguageToggle';
 import { calculateOverdueDays } from '../../engine/overdueCalculation';
+import { SeedDemoDataModal } from './SeedDemoDataModal';
 
 export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () => void }) {
   const { userProfile, currentUser, logout, language } = useAuth();
   const t = getTranslation(language);
   const referenceDate = '2026-11-02';
+  const [seedModalOpen, setSeedModalOpen] = useState(false);
 
   const authorizedCentres = (userProfile?.authorizedCentreIds && userProfile.authorizedCentreIds.length > 0)
     ? userProfile.authorizedCentreIds
@@ -56,7 +59,7 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
     {
       roll: 'STU-0587',
       name: 'Ishita Sharma',
-      parentPhone: '+91 98290 67890',
+      parentPhone: '+91 98290 00001',
       batch: 'JEE 2027 Evening',
       centreId: 'CENTRE-JAIPUR-MALVIYA',
       centreName: 'Malviya Nagar, Jaipur',
@@ -67,7 +70,7 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
     {
       roll: 'STU-0219',
       name: 'Mohit Gurjar',
-      parentPhone: '+91 97840 54321',
+      parentPhone: '+91 97840 00002',
       batch: 'NEET 2027 Morning',
       centreId: 'CENTRE-JAIPUR-TONK',
       centreName: 'Tonk Road, Jaipur',
@@ -108,6 +111,15 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
 
           <div className="flex items-center gap-3">
             <LanguageToggle />
+            <button
+              type="button"
+              onClick={() => setSeedModalOpen(true)}
+              className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs border border-amber-400/30"
+              title="Open safe one-time demo seeding console"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Seed Demo Data</span>
+            </button>
             <button
               type="button"
               onClick={onOpenTestbench}
@@ -241,7 +253,9 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
                     <tr key={s.roll} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-900">{s.name}</div>
-                        <div className="font-mono text-[11px] text-slate-500">{s.roll} • {s.parentPhone}</div>
+                        <div className="font-mono text-[11px] text-slate-500">
+                          {s.roll} • {maskPhoneNumber(s.parentPhone)}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600">
                         <div>{s.batch}</div>
@@ -279,6 +293,12 @@ export function StaffDashboardView({ onOpenTestbench }: { onOpenTestbench: () =>
         </section>
 
       </main>
+
+      {/* Safe Demo Data Seed & Verification Modal */}
+      <SeedDemoDataModal 
+        isOpen={seedModalOpen} 
+        onClose={() => setSeedModalOpen(false)} 
+      />
     </div>
   );
 }
