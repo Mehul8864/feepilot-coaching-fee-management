@@ -91,6 +91,7 @@ export interface Student {
 export interface FeePlan {
   id: string;
   studentId: string;
+  centreId?: string;
   grossAmountPaise: CurrencyPaise;
   discountAmountPaise: CurrencyPaise;
   discountReason?: string;
@@ -107,6 +108,7 @@ export interface Instalment {
   id: string;
   feePlanId: string;
   studentId: string;
+  centreId?: string;
   instalmentNumber: number;
   dueDate: string; // YYYY-MM-DD
   amountPaise: CurrencyPaise;
@@ -124,6 +126,7 @@ export interface Payment {
   receiptNumber: string; // e.g. "REC-2026-00412"
   instalmentId: string;
   studentId: string;
+  centreId?: string;
   amountPaise: CurrencyPaise;
   paymentMethod: PaymentMethod;
   transactionRef: string; // UTR or gateway ID
@@ -137,6 +140,7 @@ export interface ReminderSchedule {
   id: string;
   instalmentId: string;
   studentId: string;
+  centreId?: string;
   stage: ReminderStage;
   scheduledDate: string; // YYYY-MM-DD
   language: LanguageCode;
